@@ -9,7 +9,7 @@ namespace accessd {
 Config& Config::instance() {
     static Config instance;
     return instance;
-}
+}   
 
 bool Config::load(const std::string& config_file) {
     std::ifstream file(config_file);

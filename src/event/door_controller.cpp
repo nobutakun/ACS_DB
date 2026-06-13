@@ -5,6 +5,7 @@
 #include <thread>
 #include <iostream>
 #include <fstream>
+#include <sqlite3.h>
 
 namespace accessd {
 

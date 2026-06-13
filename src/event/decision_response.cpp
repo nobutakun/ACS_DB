@@ -164,8 +164,8 @@ bool DecisionResponse::write_access_log(const EvaluationContext& context,
 
     stmt->bind_text(10, timestamp_str);  // attempted_at same as timestamp
 
-    int result = stmt->step();
-    if (result != SQLITE_DONE) {
+    int ret = stmt->step();
+    if (ret != SQLITE_DONE) {
         std::cerr << "Failed to insert access log: " << db_->last_error() << std::endl;
         return false;
     }
@@ -233,8 +233,8 @@ bool DecisionResponse::write_event(const EvaluationContext& context,
                << "\",\"rule_name\":\"" << decision.rule_name << "\"}";
     stmt->bind_text(10, event_data.str());
 
-    int result = stmt->step();
-    if (result != SQLITE_DONE) {
+    int ret = stmt->step();
+    if (ret != SQLITE_DONE) {
         std::cerr << "Failed to insert event: " << db_->last_error() << std::endl;
         return false;
     }

@@ -16,6 +16,8 @@
 #include <cstring>
 #include <vector>
 #include <map>
+#include <algorithm>
+#include <cstdint>
 
 // Include libosdp C API
 #ifdef HAVE_LIBOSDP
@@ -159,15 +161,46 @@ struct osdp_pd_info {
     int flags;
 };
 
-// libosdp CP functions
+// libosdp CP functions - stub implementations
+static osdp_t *g_osdp_ctx = nullptr;
+static void (*g_event_cb)(void *arg, int pd, struct osdp_event *ev) = nullptr;
+static void *g_event_cb_arg = nullptr;
+
 osdp_t *osdp_cp_setup(const struct osdp_channel *channel, int num_pd,
-                      const struct osdp_pd_info *pd_info);
-void osdp_cp_refresh(osdp_t *ctx);
-void osdp_cp_teardown(osdp_t *ctx);
-int osdp_cp_send_command(osdp_t *ctx, int pd, const struct osdp_cmd *cmd);
-void osdp_cp_set_event_callback(osdp_t *ctx, void (*cb)(void *arg, int pd, struct osdp_event *ev), void *arg);
+                      const struct osdp_pd_info *pd_info) {
+    std::cout << "Stub: osdp_cp_setup called with " << num_pd << " PDs" << std::endl;
+    g_osdp_ctx = reinterpret_cast<osdp_t*>(0x1);  // Dummy non-null pointer
+    return g_osdp_ctx;
+}
+
+void osdp_cp_refresh(osdp_t *ctx) {
+    // Stub - do nothing
+}
+
+void osdp_cp_teardown(osdp_t *ctx) {
+    std::cout << "Stub: osdp_cp_teardown" << std::endl;
+    g_osdp_ctx = nullptr;
+}
+
+int osdp_cp_send_command(osdp_t *ctx, int pd, const struct osdp_cmd *cmd) {
+    std::cout << "Stub: osdp_cp_send_command to PD " << pd << ", cmd=" << cmd->id << std::endl;
+    return 0;  // Return success
+}
+
+void osdp_cp_set_event_callback(osdp_t *ctx, void (*cb)(void *arg, int pd, struct osdp_event *ev), void *arg) {
+    std::cout << "Stub: osdp_cp_set_event_callback" << std::endl;
+    g_event_cb = cb;
+    g_event_cb_arg = arg;
+}
 
 #endif
+
+// Static callback wrapper for libosdp event callback
+static void osdp_event_callback_wrapper(void *arg, int pd, struct osdp_event *ev) {
+    accessd::OSDPConnection* conn = static_cast<accessd::OSDPConnection*>(arg);
+    // Cast from global osdp_event to accessd::osdp_event (same layout)
+    conn->handle_osdp_event(pd, *reinterpret_cast<accessd::osdp_event*>(ev));
+}
 
 namespace accessd {
 
@@ -313,10 +346,7 @@ bool OSDPConnection::start() {
     }
 
     // Set event callback
-    osdp_cp_set_event_callback(osdp_ctx_, [](void *arg, int pd, struct osdp_event *ev) {
-        OSDPConnection* conn = static_cast<OSDPConnection*>(arg);
-        conn->handle_osdp_event(pd, *ev);
-    }, this);
+    osdp_cp_set_event_callback(osdp_ctx_, osdp_event_callback_wrapper, this);
 
     running_ = true;
 
@@ -362,7 +392,7 @@ bool OSDPConnection::led(int pd_id, int led_number, bool on) {
         return false;
     }
 
-    struct osdp_cmd cmd = {0};
+    struct osdp_cmd cmd = {};
     cmd.id = OSDP_CMD_LED;
     cmd.flags = 0;
 
@@ -402,7 +432,7 @@ bool OSDPConnection::buzzer(int pd_id, int on_time_ms, int off_time_ms, int coun
         return false;
     }
 
-    struct osdp_cmd cmd = {0};
+    struct osdp_cmd cmd = {};
     cmd.id = OSDP_CMD_BUZZER;
     cmd.flags = 0;
 
@@ -429,7 +459,7 @@ bool OSDPConnection::display_text(int pd_id, const std::string& text, int durati
         return false;
     }
 
-    struct osdp_cmd cmd = {0};
+    struct osdp_cmd cmd = {};
     cmd.id = OSDP_CMD_TEXT;
     cmd.flags = 0;
 

@@ -2,7 +2,7 @@
 -- Module 1: System State
 -- Sprint 1: Reduced scope - only DB version tracking
 -- ============================================
-
+    
 CREATE TABLE IF NOT EXISTS system_state (
     state_id INTEGER PRIMARY KEY AUTOINCREMENT,
     state_key TEXT NOT NULL UNIQUE,

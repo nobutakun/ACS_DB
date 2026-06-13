@@ -9,9 +9,19 @@
 
 namespace accessd {
 
+// OSDP Event types (from libosdp)
+enum osdp_event_type {
+    OSDP_EVENT_CARDREAD = 1,
+    OSDP_EVENT_KEYPRESS,
+    OSDP_EVENT_MFGREP,
+    OSDP_EVENT_STATUS,
+    OSDP_EVENT_NOTIFICATION,
+    OSDP_EVENT_SENTINEL
+};
+
 // Forward declarations for libosdp types
 struct osdp_event {
-    int type;
+    enum osdp_event_type type;
     uint32_t flags;
     union {
         struct {
@@ -122,6 +132,11 @@ public:
     bool buzzer(int pd_id, int on_time_ms, int off_time_ms, int count);
     bool display_text(int pd_id, const std::string& text, int duration_sec);
 
+    // Event handlers (called from libosdp callback)
+    void handle_osdp_event(int pd_offset, struct osdp_event& event);
+    void handle_card_read(int pd_id, const std::string& card_data);
+    void handle_keypress(int pd_id, uint8_t* keys, int length);
+
 private:
     std::string serial_port_;
     int baudrate_;
@@ -136,9 +151,6 @@ private:
     // Private methods
     bool setup_rs485();
     void osdp_loop();
-    void handle_osdp_event(int pd_offset, struct osdp_event& event);
-    void handle_card_read(int pd_id, const std::string& card_data);
-    void handle_keypress(int pd_id, uint8_t* keys, int length);
 };
 
 } // namespace accessd
