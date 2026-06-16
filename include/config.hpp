@@ -57,6 +57,13 @@ public:
     const HardwareConfig& hardware() const { return hardware_; }
     const SecurityConfig& security() const { return security_; }
 
+    // Setter for testing
+    void set_hardware_defaults(int relay_ms, int timeout_sec, int held_timeout_sec) {
+        hardware_.relay_default_ms = relay_ms;
+        hardware_.door_timeout_sec = timeout_sec;
+        hardware_.door_held_timeout_sec = held_timeout_sec;
+    }
+
 private:
     Config() = default;
     bool parse_line(const std::string& line, std::string& section, std::string& key, std::string& value);

@@ -46,8 +46,8 @@ public:
     // Trigger relay via GPIO
     bool trigger_relay(int door_id, int duration_ms);
 
-private:
-    std::shared_ptr<DatabaseConnection> db_;
+    // Get GPIO pin mapping
+    int get_door_gpio_pin(int door_id) const;
 
     // Get relay time for door from config or database
     int get_relay_time_ms(int door_id) const;
@@ -56,9 +56,11 @@ private:
     int get_open_timeout_sec(int door_id) const;
     int get_held_timeout_sec(int door_id) const;
 
+private:
+    std::shared_ptr<DatabaseConnection> db_;
+
     // GPIO control (implementation depends on hardware)
     bool set_gpio(int gpio_pin, bool state);
-    int get_door_gpio_pin(int door_id) const;
 };
 
 } // namespace accessd

@@ -56,3 +56,24 @@ ctest --output-on-failure
 # echo ""
 # echo "Running AccessLoggerTest..."
 # ./test_access_logger
+
+# echo ""
+# echo "Running DecisionResponseTest..."
+# ./test_decision_response
+
+# echo ""
+# echo "Running DoorControllerTest..."
+# ./test_door_controller
+
+# echo ""
+# echo "Running RS485Test..."
+# ./test_rs485
+
+# echo ""
+# echo "Running OSDPConnectionTest..."
+# ./test_osdp_connection
+
+echo ""
+echo "=== Test Summary ==="
+echo "Total tests run: $(ctest --print-count | grep 'Total Tests:' | cut -d: -f2)"
+echo "See results above for details."

@@ -42,9 +42,9 @@ struct osdp_event {
 // OSDP PD (Peripheral Device) - Reader info
 struct OSDPReader {
     // Database fields
-    int reader_id;              // Database ID (autoincrement)
-    int device_id;              // Device ID reference
-    int door_id;                // Associated door ID
+    int reader_id = 0;          // Database ID (autoincrement)
+    int device_id = 0;          // Device ID reference
+    int door_id = 0;            // Associated door ID
     std::string device_uid;     // Unique identifier
     std::string name;
     std::string reader_type;    // 'card', 'fingerprint', 'face', 'qr', 'multi'
@@ -55,12 +55,12 @@ struct OSDPReader {
 
     // TCP/IP connection fields
     std::string ip_address;
-    int port;
+    int port = 0;
 
     // OSDP connection fields
-    int osdp_address;           // PD address (0-127)
-    int baudrate;               // 9600, 19200, 38400, 57600, 115200
-    bool use_encryption;        // AES-128
+    int osdp_address = 0;       // PD address (0-127)
+    int baudrate = 0;           // 9600, 19200, 38400, 57600, 115200
+    bool use_encryption = false; // AES-128
     std::vector<uint8_t> master_key;  // SCBK: 16 bytes
     std::string rs485_port;     // /dev/ttyUSB0, /dev/ttyAMA0
 
@@ -68,16 +68,16 @@ struct OSDPReader {
     std::string status;         // 'online', 'offline', 'error'
 
     // Reader capabilities (from PD discovery)
-    bool supports_card;
-    bool supports_pin;
-    bool supports_biometric;
-    bool supports_led;
-    bool supports_buzzer;
-    bool supports_display;
+    bool supports_card = false;
+    bool supports_pin = false;
+    bool supports_biometric = false;
+    bool supports_led = false;
+    bool supports_buzzer = false;
+    bool supports_display = false;
 
     // PD identification (from OSDP CMD_ID response)
-    uint32_t vendor_code;
-    uint32_t firmware_version;
+    uint32_t vendor_code = 0;
+    uint32_t firmware_version = 0;
     std::string serial_number;
 
     // Check if this is an OSDP reader
@@ -89,15 +89,15 @@ struct OSDPReader {
 
 // Access Request from Reader
 struct AccessRequest {
-    int reader_id;              // OSDP PD ID
+    int reader_id = 0;          // OSDP PD ID
     std::string device_uid;     // Reader unique ID
     std::string credential;     // Card number, PIN, etc.
     std::string credential_type;// card, pin, fingerprint, face
     std::string door_id;        // Associated door
-    uint64_t timestamp;         // Unix timestamp
+    uint64_t timestamp = 0;     // Unix timestamp
 
     // OSDP specific
-    int osdp_pd_id;
+    int osdp_pd_id = 0;
     std::string format;         // Wiegand format, OSDP format
 };
 
@@ -107,35 +107,35 @@ using AccessRequestCallback = std::function<void(const AccessRequest&)>;
 class OSDPConnection {
 public:
     OSDPConnection();
-    ~OSDPConnection();
+    virtual ~OSDPConnection();
 
     // Initialize RS485 and OSDP
-    bool init(const std::string& serial_port, int baudrate = 9600);
+    virtual bool init(const std::string& serial_port, int baudrate = 9600);
 
     // Add/Remove reader (PD)
-    bool add_reader(const OSDPReader& reader);
-    bool remove_reader(int reader_id);
-    bool remove_reader_by_address(int osdp_address);
+    virtual bool add_reader(const OSDPReader& reader);
+    virtual bool remove_reader(int reader_id);
+    virtual bool remove_reader_by_address(int osdp_address);
 
     // Start/Stop OSDP loop
-    bool start();
-    void stop();
+    virtual bool start();
+    virtual void stop();
 
     // Register callback for access requests
-    void set_access_callback(AccessRequestCallback callback);
+    virtual void set_access_callback(AccessRequestCallback callback);
 
     // Get connected readers
-    std::vector<OSDPReader> get_readers() const;
+    virtual std::vector<OSDPReader> get_readers() const;
 
     // Send commands to reader
-    bool led(int pd_id, int led_number, bool on);
-    bool buzzer(int pd_id, int on_time_ms, int off_time_ms, int count);
-    bool display_text(int pd_id, const std::string& text, int duration_sec);
+    virtual bool led(int pd_id, int led_number, bool on);
+    virtual bool buzzer(int pd_id, int on_time_ms, int off_time_ms, int count);
+    virtual bool display_text(int pd_id, const std::string& text, int duration_sec);
 
     // Event handlers (called from libosdp callback)
-    void handle_osdp_event(int pd_offset, struct osdp_event& event);
-    void handle_card_read(int pd_id, const std::string& card_data);
-    void handle_keypress(int pd_id, uint8_t* keys, int length);
+    virtual void handle_osdp_event(int pd_offset, struct osdp_event& event);
+    virtual void handle_card_read(int pd_id, const std::string& card_data);
+    virtual void handle_keypress(int pd_id, uint8_t* keys, int length);
 
 private:
     std::string serial_port_;

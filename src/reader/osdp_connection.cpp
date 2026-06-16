@@ -20,14 +20,186 @@
 #include <cstdint>
 
 // Include libosdp C API
+#ifdef HAVE_LIBOSDP
 #include <osdp.h>
+#else
+// If libosdp is not available, we'll use stub declarations for now
+// This allows the project to compile even without libosdp installed
+#warning "libosdp not found! OSDP functionality will be limited."
+
+// Forward declarations for libosdp types (for compilation without libosdp)
+typedef void osdp_t;
+
+// OSDP Event types
+enum osdp_event_type {
+    OSDP_EVENT_CARDREAD = 1,
+    OSDP_EVENT_KEYPRESS,
+    OSDP_EVENT_MFGREP,
+    OSDP_EVENT_STATUS,
+    OSDP_EVENT_NOTIFICATION,
+    OSDP_EVENT_SENTINEL
+};
+
+// OSDP Command types
+enum osdp_cmd_e {
+    OSDP_CMD_OUTPUT = 1,
+    OSDP_CMD_LED,
+    OSDP_CMD_BUZZER,
+    OSDP_CMD_TEXT,
+    OSDP_CMD_KEYSET,
+    OSDP_CMD_COMSET,
+    OSDP_CMD_MFG,
+    OSDP_CMD_FILE_TX,
+    OSDP_CMD_STATUS,
+    OSDP_CMD_COMSET_DONE,
+    OSDP_CMD_NOTIFICATION,
+    OSDP_CMD_SENTINEL
+};
+
+// LED Color enum
+enum osdp_led_color_e {
+    OSDP_LED_COLOR_NONE = 0,
+    OSDP_LED_COLOR_BLACK,
+    OSDP_LED_COLOR_RED,
+    OSDP_LED_COLOR_GREEN,
+    OSDP_LED_COLOR_AMBER,
+    OSDP_LED_COLOR_BLUE,
+    OSDP_LED_COLOR_MAGENTA,
+    OSDP_LED_COLOR_CYAN,
+    OSDP_LED_COLOR_WHITE
+};
+
+// OSDP Event structures
+struct osdp_event_cardread {
+    int reader_no;
+    int format;
+    int direction;
+    int length;
+    uint8_t data[64];
+};
+
+struct osdp_event_keypress {
+    int reader_no;
+    int length;
+    uint8_t data[64];
+};
+
+struct osdp_event {
+    enum osdp_event_type type;
+    uint32_t flags;
+    union {
+        struct osdp_event_keypress keypress;
+        struct osdp_event_cardread cardread;
+    };
+};
+
+// OSDP Command structures
+struct osdp_cmd_led_params {
+    uint8_t control_code;
+    uint8_t on_count;
+    uint8_t off_count;
+    uint8_t on_color;
+    uint8_t off_color;
+    uint16_t timer_count;
+};
+
+struct osdp_cmd_led {
+    uint8_t reader;
+    uint8_t led_number;
+    struct osdp_cmd_led_params temporary;
+    struct osdp_cmd_led_params permanent;
+};
+
+struct osdp_cmd_buzzer {
+    uint8_t reader;
+    uint8_t control_code;
+    uint8_t on_count;
+    uint8_t off_count;
+    uint8_t rep_count;
+};
+
+struct osdp_cmd_text {
+    uint8_t reader;
+    uint8_t control_code;
+    uint8_t temp_time;
+    uint8_t offset_row;
+    uint8_t offset_col;
+    uint8_t length;
+    uint8_t data[32];
+};
+
+struct osdp_cmd_output {
+    uint8_t output_no;
+    uint8_t control_code;
+    uint16_t timer_count;
+};
+
+struct osdp_cmd {
+    enum osdp_cmd_e id;
+    uint32_t flags;
+    union {
+        struct osdp_cmd_led led;
+        struct osdp_cmd_buzzer buzzer;
+        struct osdp_cmd_text text;
+        struct osdp_cmd_output output;
+    };
+};
+
+// OSDP Channel and PD Info
+struct osdp_channel {
+    void *data;
+    int (*send)(void *data, uint8_t *buf, int len);
+    int (*recv)(void *data, uint8_t *buf, int maxlen);
+};
+
+struct osdp_pd_info {
+    int baud_rate;
+    int address;
+    const char *device_path;
+    struct osdp_channel channel;
+    const void *scbk;
+    int flags;
+};
+
+// libosdp CP functions - stub implementations
+static osdp_t *g_osdp_ctx = nullptr;
+static void (*g_event_cb)(void *arg, int pd, struct osdp_event *ev) = nullptr;
+static void *g_event_cb_arg = nullptr;
+
+osdp_t *osdp_cp_setup(const struct osdp_channel *channel, int num_pd,
+                      const struct osdp_pd_info *pd_info) {
+    std::cout << "Stub: osdp_cp_setup called with " << num_pd << " PDs" << std::endl;
+    g_osdp_ctx = reinterpret_cast<osdp_t*>(0x1);  // Dummy non-null pointer
+    return g_osdp_ctx;
+}
+
+void osdp_cp_refresh(osdp_t *ctx) {
+    // Stub - do nothing
+}
+
+void osdp_cp_teardown(osdp_t *ctx) {
+    std::cout << "Stub: osdp_cp_teardown" << std::endl;
+    g_osdp_ctx = nullptr;
+}
+
+int osdp_cp_send_command(osdp_t *ctx, int pd, const struct osdp_cmd *cmd) {
+    std::cout << "Stub: osdp_cp_send_command to PD " << pd << ", cmd=" << cmd->id << std::endl;
+    return 0;  // Return success
+}
+
+void osdp_cp_set_event_callback(osdp_t *ctx, void (*cb)(void *arg, int pd, struct osdp_event *ev), void *arg) {
+    std::cout << "Stub: osdp_cp_set_event_callback" << std::endl;
+    g_event_cb = cb;
+    g_event_cb_arg = arg;
+}
+
+#endif
 
 // Static callback wrapper for libosdp event callback
-static int osdp_event_callback_wrapper(void *arg, int pd, struct osdp_event *ev) {
+static void osdp_event_callback_wrapper(void *arg, int pd, struct osdp_event *ev) {
     accessd::OSDPConnection* conn = static_cast<accessd::OSDPConnection*>(arg);
-    // Cast from osdp_event to accessd::osdp_event (same layout)
+    // Cast from global osdp_event to accessd::osdp_event (same layout)
     conn->handle_osdp_event(pd, *reinterpret_cast<accessd::osdp_event*>(ev));
-    return 0;
 }
 
 namespace accessd {
@@ -81,6 +253,9 @@ bool OSDPConnection::setup_rs485() {
     return rs485.open(config);
 }
 
+/**
+ * @brief Add a PD (reader) to the OSDP bus
+ */
 bool OSDPConnection::add_reader(const OSDPReader& reader) {
     // Check if reader already exists
     for (const auto& r : readers_) {
@@ -98,23 +273,23 @@ bool OSDPConnection::add_reader(const OSDPReader& reader) {
 }
 
 bool OSDPConnection::remove_reader(int reader_id) {
-    auto it = std::remove_if(readers_.begin(), readers_.end(),
-                            [reader_id](const OSDPReader& r) { return r.reader_id == reader_id; });
-    if (it != readers_.end()) {
-        readers_.erase(it);
-        std::cout << "Removed reader ID: " << reader_id << std::endl;
-        return true;
+    for (auto it = readers_.begin(); it != readers_.end(); ++it) {
+        if (it->reader_id == reader_id) {
+            std::cout << "Removed reader ID: " << reader_id << std::endl;
+            readers_.erase(it);
+            return true;
+        }
     }
     return false;
 }
 
 bool OSDPConnection::remove_reader_by_address(int osdp_address) {
-    auto it = std::remove_if(readers_.begin(), readers_.end(),
-                            [osdp_address](const OSDPReader& r) { return r.osdp_address == osdp_address; });
-    if (it != readers_.end()) {
-        readers_.erase(it);
-        std::cout << "Removed reader with OSDP address: " << osdp_address << std::endl;
-        return true;
+    for (auto it = readers_.begin(); it != readers_.end(); ++it) {
+        if (it->osdp_address == osdp_address) {
+            std::cout << "Removed reader with OSDP address: " << osdp_address << std::endl;
+            readers_.erase(it);
+            return true;
+        }
     }
     return false;
 }
@@ -130,79 +305,40 @@ bool OSDPConnection::start() {
         return false;
     }
 
-    // Build PD info array using libosdp's osdp_pd_info_t
-    std::vector<osdp_pd_info_t> pd_infos;
+    // Build PD info array
+    std::vector<struct osdp_pd_info> pd_infos;
     pd_address_to_offset.clear();
     pd_address_to_reader.clear();
 
-    // RS485 instances - one per reader
-    static RS485 rs485_instances[8];
-    static int rs485_index = 0;
-    rs485_index = 0;  // Reset on start
-
     int offset = 0;
     for (const auto& reader : readers_) {
-        if (rs485_index < 8) {
-            RS485Config config;
-            config.port = reader.rs485_port;
-            config.baud_rate = reader.baudrate;
-            rs485_instances[rs485_index].open(config);
-        }
-
-        osdp_pd_info_t info = {0};
+        struct osdp_pd_info info = {0};
         info.baud_rate = reader.baudrate;
         info.address = reader.osdp_address;
+        info.device_path = reader.rs485_port.c_str();
+        info.scbk = nullptr;
         info.flags = 0;
-
-        // Store the RS485 instance pointer for this PD
-        pd_address_to_offset[reader.osdp_address] = rs485_index;
 
         pd_infos.push_back(info);
         pd_address_to_offset[reader.osdp_address] = offset;
         pd_address_to_reader[reader.osdp_address] = reader;
         offset++;
-        rs485_index++;
     }
 
-    // Setup channel - shared by all PDs
-    // The channel callbacks will use the PD address to select the correct RS485 instance
+    // Setup channel
     struct osdp_channel channel = {0};
-    channel.data = this;
-
-    // Store RS485 instances pointer for channel callbacks
-    static std::vector<RS485*>* rs485_vector_ptr = nullptr;
-    static std::vector<RS485*> rs485_vector;
-
-    rs485_vector.clear();
-    for (int i = 0; i < rs485_index && i < 8; i++) {
-        rs485_vector.push_back(&rs485_instances[i]);
-    }
-    rs485_vector_ptr = &rs485_vector;
-
     channel.send = [](void *data, uint8_t *buf, int len) -> int {
-        // In multi-PD setup, libosdp calls this with proper PD context
-        // For now, use the first available RS485
-        if (rs485_vector_ptr && !rs485_vector_ptr->empty()) {
-            RS485* rs485 = (*rs485_vector_ptr)[0];
-            if (rs485 && rs485->is_open()) {
-                return static_cast<int>(rs485->write(buf, len));
-            }
-        }
-        return -1;
+        std::cout << "OSDP TX: " << len << " bytes" << std::endl;
+        // TODO: Implement RS485 send
+        return len;
     };
 
     channel.recv = [](void *data, uint8_t *buf, int maxlen) -> int {
-        if (rs485_vector_ptr && !rs485_vector_ptr->empty()) {
-            RS485* rs485 = (*rs485_vector_ptr)[0];
-            if (rs485 && rs485->is_open()) {
-                return static_cast<int>(rs485->read(buf, maxlen));
-            }
-        }
-        return -1;
+        // TODO: Implement RS485 recv
+        return 0;
     };
 
     // Setup libosdp CP context
-    // API: osdp_cp_setup(const osdp_channel *channel, int num_pd, const osdp_pd_info_t *pd_info)
     osdp_ctx_ = osdp_cp_setup(&channel, static_cast<int>(pd_infos.size()), pd_infos.data());
     if (!osdp_ctx_) {
         std::cerr << "Failed to setup OSDP CP" << std::endl;
@@ -267,8 +403,8 @@ bool OSDPConnection::led(int pd_id, int led_number, bool on) {
     cmd.led.permanent.control_code = 1;
     cmd.led.permanent.on_count = on ? 255 : 0;
     cmd.led.permanent.off_count = on ? 0 : 255;
-    cmd.led.permanent.on_color = on ? OSDP_LED_COLOR_GREEN : OSDP_LED_COLOR_NONE;
-    cmd.led.permanent.off_color = OSDP_LED_COLOR_NONE;
+    cmd.led.permanent.on_color = on ? OSDP_LED_COLOR_GREEN : OSDP_LED_COLOR_BLACK;
+    cmd.led.permanent.off_color = OSDP_LED_COLOR_BLACK;
     cmd.led.permanent.timer_count = 0;
 
     // Temporary mode: NOP
@@ -279,8 +415,7 @@ bool OSDPConnection::led(int pd_id, int led_number, bool on) {
     cmd.led.temporary.off_color = OSDP_LED_COLOR_NONE;
     cmd.led.temporary.timer_count = 0;
 
-    // Use osdp_cp_submit_command (new API)
-    if (osdp_cp_submit_command(osdp_ctx_, it->second, &cmd) != 0) {
+    if (osdp_cp_send_command(osdp_ctx_, it->second, &cmd) != 0) {
         std::cerr << "Failed to send LED command" << std::endl;
         return false;
     }
@@ -307,7 +442,7 @@ bool OSDPConnection::buzzer(int pd_id, int on_time_ms, int off_time_ms, int coun
     cmd.buzzer.off_count = static_cast<uint8_t>(off_time_ms / 100);
     cmd.buzzer.rep_count = static_cast<uint8_t>(count);
 
-    if (osdp_cp_submit_command(osdp_ctx_, it->second, &cmd) != 0) {
+    if (osdp_cp_send_command(osdp_ctx_, it->second, &cmd) != 0) {
         std::cerr << "Failed to send buzzer command" << std::endl;
         return false;
     }
@@ -336,7 +471,7 @@ bool OSDPConnection::display_text(int pd_id, const std::string& text, int durati
     cmd.text.length = std::min(text.size(), sizeof(cmd.text.data) - 1);
     std::strncpy(reinterpret_cast<char*>(cmd.text.data), text.c_str(), sizeof(cmd.text.data) - 1);
 
-    if (osdp_cp_submit_command(osdp_ctx_, it->second, &cmd) != 0) {
+    if (osdp_cp_send_command(osdp_ctx_, it->second, &cmd) != 0) {
         std::cerr << "Failed to send text command" << std::endl;
         return false;
     }

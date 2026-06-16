@@ -46,21 +46,21 @@ int Statement::step() {
     return SQLITE_ERROR;
 }
 
-int Statement::column_int(int index) {
+int Statement::column_int(int index) const {
     if (stmt_) {
         return sqlite3_column_int(stmt_, index);
     }
     return 0;
 }
 
-int64_t Statement::column_int64(int index) {
+int64_t Statement::column_int64(int index) const {
     if (stmt_) {
         return sqlite3_column_int64(stmt_, index);
     }
     return 0;
 }
 
-std::string Statement::column_text(int index) {
+std::string Statement::column_text(int index) const {
     if (stmt_) {
         const char* text = reinterpret_cast<const char*>(
             sqlite3_column_text(stmt_, index));
@@ -69,14 +69,14 @@ std::string Statement::column_text(int index) {
     return "";
 }
 
-double Statement::column_double(int index) {
+double Statement::column_double(int index) const {
     if (stmt_) {
         return sqlite3_column_double(stmt_, index);
     }
     return 0.0;
 }
 
-bool Statement::column_is_null(int index) {
+bool Statement::column_is_null(int index) const {
     if (stmt_) {
         return sqlite3_column_type(stmt_, index) == SQLITE_NULL;
     }
